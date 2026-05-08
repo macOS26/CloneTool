@@ -21,12 +21,6 @@
 		BB00000000000000000013 /* CloneToolHelper in Copy Helper */ = {isa = PBXBuildFile; fileRef = BB00000000000000000003 /* CloneToolHelper */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		EAF3666D2F610EE0004B7E38 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = EAF3666C2F610EE0004B7E38 /* AppIcon.icon */; };
 		CC00000000000000000001 /* pigz in Copy Pigz */ = {isa = PBXBuildFile; fileRef = CC00000000000000000002 /* pigz */; };
-		DD00000000000000000010 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD00000000000000000001 /* main.swift */; };
-		DD00000000000000000011 /* AgentProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD00000000000000000002 /* AgentProtocol.swift */; };
-		DD00000000000000000012 /* com.clonetool.agent.plist in Copy Agent Plist */ = {isa = PBXBuildFile; fileRef = DD00000000000000000006 /* com.clonetool.agent.plist */; };
-		DD00000000000000000013 /* CloneToolAgent in Copy Agent */ = {isa = PBXBuildFile; fileRef = DD00000000000000000003 /* CloneToolAgent */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		DD00000000000000000014 /* AgentProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD00000000000000000004 /* AgentProtocol.swift */; };
-		DD00000000000000000015 /* AgentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD00000000000000000005 /* AgentService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -36,13 +30,6 @@
 			proxyType = 1;
 			remoteGlobalIDString = BB00000000000000000070;
 			remoteInfo = CloneToolHelper;
-		};
-		DD00000000000000000030 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = AA0000000000000000001A /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = DD00000000000000000070;
-			remoteInfo = CloneToolAgent;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -80,28 +67,6 @@
 			name = "Copy Pigz";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		DD00000000000000000020 /* Copy Agent */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 6;
-			files = (
-				DD00000000000000000013 /* CloneToolAgent in Copy Agent */,
-			);
-			name = "Copy Agent";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		DD00000000000000000021 /* Copy Agent Plist */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = Contents/Library/LaunchAgents;
-			dstSubfolderSpec = 1;
-			files = (
-				DD00000000000000000012 /* com.clonetool.agent.plist in Copy Agent Plist */,
-			);
-			name = "Copy Agent Plist";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -122,12 +87,6 @@
 		EAF3666C2F610EE0004B7E38 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		CC00000000000000000002 /* pigz */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = pigz; sourceTree = "<group>"; };
 		CC00000000000000000003 /* Binaries */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Binaries; sourceTree = "<group>"; };
-		DD00000000000000000001 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
-		DD00000000000000000002 /* AgentProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentProtocol.swift; sourceTree = "<group>"; };
-		DD00000000000000000003 /* CloneToolAgent */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = CloneToolAgent; sourceTree = BUILT_PRODUCTS_DIR; };
-		DD00000000000000000004 /* AgentProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentProtocol.swift; sourceTree = "<group>"; };
-		DD00000000000000000005 /* AgentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentService.swift; sourceTree = "<group>"; };
-		DD00000000000000000006 /* com.clonetool.agent.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.clonetool.agent.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -145,13 +104,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		DD00000000000000000062 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -160,7 +112,6 @@
 			children = (
 				AA0000000000000000002B /* CloneTool */,
 				BB0000000000000000002B /* CloneToolHelper */,
-				DD0000000000000000002B /* CloneToolAgent */,
 				AA0000000000000000002C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -174,15 +125,12 @@
 				AA0000000000000000003D /* CloneViewModel.swift */,
 				AA0000000000000000003E /* DiskService.swift */,
 				AA0000000000000000003F /* DDService.swift */,
-				DD00000000000000000005 /* AgentService.swift */,
 				AA00000000000000000043 /* HelperProtocol.swift */,
-				DD00000000000000000004 /* AgentProtocol.swift */,
 				AA00000000000000000040 /* Assets.xcassets */,
 				AA00000000000000000041 /* CloneTool.entitlements */,
 				EAF3666C2F610EE0004B7E38 /* AppIcon.icon */,
 				CC00000000000000000004 /* Binaries */,
 				BB0000000000000000002D /* LaunchDaemons */,
-				DD0000000000000000002D /* LaunchAgents */,
 			);
 			path = CloneTool;
 			sourceTree = "<group>";
@@ -192,7 +140,6 @@
 			children = (
 				AA00000000000000000042 /* CloneTool.app */,
 				BB00000000000000000003 /* CloneToolHelper */,
-				DD00000000000000000003 /* CloneToolAgent */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -206,29 +153,12 @@
 			path = CloneToolHelper;
 			sourceTree = "<group>";
 		};
-		DD0000000000000000002B /* CloneToolAgent */ = {
-			isa = PBXGroup;
-			children = (
-				DD00000000000000000001 /* main.swift */,
-				DD00000000000000000002 /* AgentProtocol.swift */,
-			);
-			path = CloneToolAgent;
-			sourceTree = "<group>";
-		};
 		BB0000000000000000002D /* LaunchDaemons */ = {
 			isa = PBXGroup;
 			children = (
 				AA00000000000000000044 /* com.clonetool.helper.plist */,
 			);
 			path = LaunchDaemons;
-			sourceTree = "<group>";
-		};
-		DD0000000000000000002D /* LaunchAgents */ = {
-			isa = PBXGroup;
-			children = (
-				DD00000000000000000006 /* com.clonetool.agent.plist */,
-			);
-			path = LaunchAgents;
 			sourceTree = "<group>";
 		};
 		CC00000000000000000004 /* Binaries */ = {
@@ -251,15 +181,12 @@
 				AA00000000000000000062 /* Frameworks */,
 				BB00000000000000000020 /* Copy Helper */,
 				BB00000000000000000021 /* Copy Daemon Plist */,
-				DD00000000000000000020 /* Copy Agent */,
-				DD00000000000000000021 /* Copy Agent Plist */,
 				CC00000000000000000005 /* Copy Pigz */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				BB00000000000000000031 /* PBXTargetDependency */,
-				DD00000000000000000031 /* PBXTargetDependency */,
 			);
 			name = CloneTool;
 			productName = CloneTool;
@@ -280,22 +207,6 @@
 			name = CloneToolHelper;
 			productName = CloneToolHelper;
 			productReference = BB00000000000000000003 /* CloneToolHelper */;
-			productType = "com.apple.product-type.tool";
-		};
-		DD00000000000000000070 /* CloneToolAgent */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = DD00000000000000000091 /* Build configuration list for PBXNativeTarget "CloneToolAgent" */;
-			buildPhases = (
-				DD00000000000000000060 /* Sources */,
-				DD00000000000000000062 /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = CloneToolAgent;
-			productName = CloneToolAgent;
-			productReference = DD00000000000000000003 /* CloneToolAgent */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -323,7 +234,6 @@
 			targets = (
 				AA00000000000000000070 /* CloneTool */,
 				BB00000000000000000070 /* CloneToolHelper */,
-				DD00000000000000000070 /* CloneToolAgent */,
 			);
 		};
 /* End PBXProject section */
@@ -352,8 +262,6 @@
 				AA00000000000000000054 /* DiskService.swift in Sources */,
 				AA00000000000000000055 /* DDService.swift in Sources */,
 				AA00000000000000000057 /* HelperProtocol.swift in Sources */,
-				DD00000000000000000014 /* AgentProtocol.swift in Sources */,
-				DD00000000000000000015 /* AgentService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -366,15 +274,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		DD00000000000000000060 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				DD00000000000000000010 /* main.swift in Sources */,
-				DD00000000000000000011 /* AgentProtocol.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -382,11 +281,6 @@
 			isa = PBXTargetDependency;
 			target = BB00000000000000000070 /* CloneToolHelper */;
 			targetProxy = BB00000000000000000030 /* PBXContainerItemProxy */;
-		};
-		DD00000000000000000031 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = DD00000000000000000070 /* CloneToolAgent */;
-			targetProxy = DD00000000000000000030 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -601,36 +495,6 @@
 			};
 			name = Release;
 		};
-		DD00000000000000000082 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
-				DEAD_CODE_STRIPPING = YES;
-				ENABLE_HARDENED_RUNTIME = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.clonetool.agent;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 6.0;
-			};
-			name = Debug;
-		};
-		DD00000000000000000083 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
-				DEAD_CODE_STRIPPING = YES;
-				ENABLE_HARDENED_RUNTIME = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.clonetool.agent;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 6.0;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -657,15 +521,6 @@
 			buildConfigurations = (
 				BB00000000000000000082 /* Debug */,
 				BB00000000000000000083 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		DD00000000000000000091 /* Build configuration list for PBXNativeTarget "CloneToolAgent" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				DD00000000000000000082 /* Debug */,
-				DD00000000000000000083 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
