@@ -65,24 +65,17 @@ final class DDService {
     func registerHelper() {
         let service = SMAppService.daemon(plistName: "com.clonetool.helper.plist")
 
-        if service.status == .notFound {
-            appendLog("Helper daemon not found in app bundle.")
-            return
-        }
-
         if service.status == .requiresApproval {
             appendLog("Helper needs approval in System Settings > Login Items.")
             SMAppService.openSystemSettingsLoginItems()
             return
         }
 
-        // Always try to register (updates binary if already enabled)
         appendLog("Registering helper daemon...")
         do {
             try service.register()
             appendLog("Helper daemon is active.")
         } catch {
-            // If register fails because already enabled, try unregister then re-register
             if service.status == .enabled {
                 appendLog("Updating helper daemon...")
                 try? service.unregister()
