@@ -3,24 +3,33 @@ import ServiceManagement
 
 // Receives progress callbacks from helper over XPC
 final class ProgressHandler: NSObject, HelperProgressProtocol, @unchecked Sendable {
-    private let handler: @Sendable (UInt64, String) -> Void
+    private let progressHandler: @Sendable (UInt64, String) -> Void
+    private let logHandler: @Sendable (String) -> Void
 
-    init(handler: @escaping @Sendable (UInt64, String) -> Void) {
-        self.handler = handler
+    init(
+        progressHandler: @escaping @Sendable (UInt64, String) -> Void,
+        logHandler: @escaping @Sendable (String) -> Void
+    ) {
+        self.progressHandler = progressHandler
+        self.logHandler = logHandler
     }
 
     func progressUpdate(_ line: String) {
         let tokens = line.split(separator: " ")
-        guard let firstToken = tokens.first, let bytes = UInt64(firstToken) else { return }
-
-        var speedStr = ""
-        if let speedIdx = tokens.lastIndex(where: { $0.hasSuffix("/s") }),
-           speedIdx > tokens.startIndex {
-            let speedNum = tokens[tokens.index(before: speedIdx)]
-            speedStr = "\(speedNum) \(tokens[speedIdx])"
+        // dd's status=progress lines start with a byte count, e.g.
+        //   "1024 bytes transferred in 0.001 secs (1024000 bytes/sec)"
+        // Anything else (errors, dd's record-count summary, etc.) is a log line.
+        if let firstToken = tokens.first, let bytes = UInt64(firstToken) {
+            var speedStr = ""
+            if let speedIdx = tokens.lastIndex(where: { $0.hasSuffix("/s") }),
+               speedIdx > tokens.startIndex {
+                let speedNum = tokens[tokens.index(before: speedIdx)]
+                speedStr = "\(speedNum) \(tokens[speedIdx])"
+            }
+            progressHandler(bytes, speedStr)
+        } else {
+            logHandler(line)
         }
-
-        handler(bytes, speedStr)
     }
 }
 
@@ -32,9 +41,7 @@ final class DDService {
     var speed: String = ""
     var statusLog: String = ""
     var totalSize: UInt64 = 0
-    var timeRemaining: String = ""
-    var operationSucceeded = false
-    private var startTime: Date?
+    var needsFullDiskAccess = false
 
     nonisolated static let helperID = "com.clonetool.helper"
     nonisolated static let pigzPath = Bundle.main.path(forAuxiliaryExecutable: "pigz") ?? "pigz"
@@ -65,17 +72,24 @@ final class DDService {
     func registerHelper() {
         let service = SMAppService.daemon(plistName: "com.clonetool.helper.plist")
 
+        if service.status == .notFound {
+            appendLog("Helper daemon not found in app bundle.")
+            return
+        }
+
         if service.status == .requiresApproval {
             appendLog("Helper needs approval in System Settings > Login Items.")
             SMAppService.openSystemSettingsLoginItems()
             return
         }
 
+        // Always try to register (updates binary if already enabled)
         appendLog("Registering helper daemon...")
         do {
             try service.register()
             appendLog("Helper daemon is active.")
         } catch {
+            // If register fails because already enabled, try unregister then re-register
             if service.status == .enabled {
                 appendLog("Updating helper daemon...")
                 try? service.unregister()
@@ -121,17 +135,19 @@ final class DDService {
         if compress {
             script = """
             #!/bin/bash
+            set -o pipefail
             diskutil unmountDisk \(source.devicePath) > /dev/null 2>&1
             dd if=\(source.rawDevicePath) bs=16m status=progress | '\(DDService.pigzPath)' > '\(destinationPath)'
             """
         } else {
             script = """
             #!/bin/bash
+            set -o pipefail
             diskutil unmountDisk \(source.devicePath) > /dev/null 2>&1
             dd if=\(source.rawDevicePath) of='\(destinationPath)' bs=16m status=progress
             """
         }
-        await runOperation(totalSize: source.sizeBytes, script: script, outputPath: destinationPath)
+        await runOperation(totalSize: source.sizeBytes, script: script)
     }
 
     // MARK: - Image to Disk
@@ -142,12 +158,14 @@ final class DDService {
         if decompress {
             script = """
             #!/bin/bash
+            set -o pipefail
             diskutil unmountDisk \(target.devicePath) > /dev/null 2>&1
             '\(DDService.pigzPath)' -d -c '\(sourcePath)' | dd of=\(target.rawDevicePath) bs=16m status=progress
             """
         } else {
             script = """
             #!/bin/bash
+            set -o pipefail
             diskutil unmountDisk \(target.devicePath) > /dev/null 2>&1
             dd if='\(sourcePath)' of=\(target.rawDevicePath) bs=16m status=progress
             """
@@ -160,10 +178,18 @@ final class DDService {
     func diskToDisk(source: DiskInfo, target: DiskInfo) async {
         let script = """
         #!/bin/bash
+        set -o pipefail
         diskutil unmountDisk \(target.devicePath) > /dev/null 2>&1
         dd if=\(source.rawDevicePath) of=\(target.rawDevicePath) bs=16m status=progress
         """
         await runOperation(totalSize: source.sizeBytes, script: script)
+    }
+
+    // MARK: - Full Disk Access
+
+    func openFullDiskAccessSettings() {
+        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!
+        NSWorkspace.shared.open(url)
     }
 
     // MARK: - Cancel
@@ -208,66 +234,52 @@ final class DDService {
 
     // MARK: - Private
 
-    private func runOperation(totalSize: UInt64, script: String, outputPath: String? = nil) async {
+    private func runOperation(totalSize: UInt64, script: String) async {
         isRunning = true
         progress = 0
         bytesTransferred = 0
         speed = ""
-        timeRemaining = ""
-        operationSucceeded = false
         self.totalSize = totalSize
         statusLog = ""
-        startTime = Date()
+        needsFullDiskAccess = false
 
         appendLog("Starting operation...")
         appendLog("Total size: \(ByteCountFormatter.string(fromByteCount: Int64(totalSize), countStyle: .file))")
 
         registerHelper()
 
-        let handler = ProgressHandler { [weak self] bytes, speedStr in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.bytesTransferred = bytes
-                if self.totalSize > 0 {
-                    self.progress = min(Double(bytes) / Double(self.totalSize), 1.0)
+        let handler = ProgressHandler(
+            progressHandler: { [weak self] bytes, speedStr in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.bytesTransferred = bytes
+                    if self.totalSize > 0 {
+                        self.progress = min(Double(bytes) / Double(self.totalSize), 1.0)
+                    }
+                    if !speedStr.isEmpty {
+                        self.speed = speedStr
+                    }
                 }
-                if !speedStr.isEmpty {
-                    self.speed = speedStr
-                }
-                if let startTime = self.startTime, self.progress > 0.01 {
-                    let elapsed = Date().timeIntervalSince(startTime)
-                    let estimatedTotal = elapsed / self.progress
-                    let remaining = estimatedTotal - elapsed
-                    if remaining > 0 {
-                        self.timeRemaining = self.formatDuration(remaining)
+            },
+            logHandler: { [weak self] line in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.appendLog(line)
+                    if line.localizedCaseInsensitiveContains("Operation not permitted") {
+                        self.needsFullDiskAccess = true
                     }
                 }
             }
-        }
+        )
 
         let result = await executeViaXPC(script: script, progressHandler: handler)
 
         if result.status == 0 {
             progress = 1.0
-            bytesTransferred = totalSize
-            timeRemaining = ""
-            if let startTime = startTime {
-                let elapsed = Date().timeIntervalSince(startTime)
-                appendLog("Operation completed successfully. Elapsed: \(formatDuration(elapsed))")
-            } else {
-                appendLog("Operation completed successfully.")
-            }
-            if let outputPath = outputPath {
-                let fileSize = (try? FileManager.default.attributesOfItem(atPath: outputPath)[.size] as? UInt64) ?? 0
-                if fileSize > 0 {
-                    let sizeStr = ByteCountFormatter.string(fromByteCount: Int64(fileSize), countStyle: .file)
-                    appendLog("Image size: \(sizeStr)")
-                }
-            }
+            appendLog("Operation completed successfully.")
             if !result.output.isEmpty {
                 appendLog(result.output)
             }
-            operationSucceeded = true
         } else if result.status == -1 {
             appendLog(result.output)
         } else {
@@ -277,23 +289,9 @@ final class DDService {
         isRunning = false
     }
 
-    private func formatDuration(_ seconds: TimeInterval) -> String {
-        let totalSeconds = Int(seconds)
-        let hours = totalSeconds / 3600
-        let minutes = (totalSeconds % 3600) / 60
-        let secs = totalSeconds % 60
-        if hours > 0 {
-            return String(format: "%dh %02dm %02ds", hours, minutes, secs)
-        } else if minutes > 0 {
-            return String(format: "%dm %02ds", minutes, secs)
-        } else {
-            return String(format: "%ds", secs)
-        }
-    }
-
     private func appendLog(_ message: String) {
         let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm:ss a"
+        formatter.dateFormat = "HH:mm:ss"
         let timestamp = formatter.string(from: Date())
         statusLog += "[\(timestamp)] \(message)\n"
     }

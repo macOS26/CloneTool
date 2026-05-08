@@ -8,31 +8,12 @@ final class CloneViewModel {
     var selectedSourceId: String?
     var selectedTargetId: String?
     var imagePath: String = ""
-    var imageName: String = "" {
-        didSet { UserDefaults.standard.set(imageName, forKey: "imageName") }
-    }
-    var imageVersion: String = "" {
-        didSet { UserDefaults.standard.set(imageVersion, forKey: "imageVersion") }
-    }
+    var imageName: String = ""
+    var imageVersion: String = ""
     var state: OperationState = .idle
     var showConfirmation = false
 
     let ddService = DDService()
-
-    init() {
-        imageName = UserDefaults.standard.string(forKey: "imageName") ?? ""
-        let saved = UserDefaults.standard.string(forKey: "imageVersion") ?? ""
-        imageVersion = Self.incrementLastVersionComponent(saved)
-        UserDefaults.standard.set(imageVersion, forKey: "imageVersion")
-    }
-
-    private static func incrementLastVersionComponent(_ version: String) -> String {
-        guard !version.isEmpty else { return version }
-        var parts = version.split(separator: ".", omittingEmptySubsequences: false).map(String.init)
-        guard let lastIndex = parts.indices.last, let lastNum = Int(parts[lastIndex]) else { return version }
-        parts[lastIndex] = String(lastNum + 1)
-        return parts.joined(separator: ".")
-    }
 
     private let defaultImageDir: URL = {
         let dir = FileManager.default.homeDirectoryForCurrentUser
@@ -130,10 +111,6 @@ final class CloneViewModel {
         }
 
         state = ddService.isRunning ? .running : .completed
-
-        if schema == .diskToImage && ddService.operationSucceeded {
-            imageVersion = Self.incrementLastVersionComponent(imageVersion)
-        }
     }
 
     func cancelClone() {

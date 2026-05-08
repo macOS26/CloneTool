@@ -46,12 +46,11 @@ final class HelperCommandHandler: NSObject, HelperToolProtocol, @unchecked Senda
             guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8) else { return }
 
             ctx.buffer += chunk
-            // dd uses \r for progress updates
-            let parts = ctx.buffer.components(separatedBy: "\r")
-            ctx.buffer = parts.last ?? ""
-
-            for i in 0..<(parts.count - 1) {
-                let line = parts[i].trimmingCharacters(in: .whitespacesAndNewlines)
+            // dd uses \r for in-place progress; errors arrive as \n-terminated lines.
+            // Split on both so error output isn't held in the buffer until exit.
+            while let idx = ctx.buffer.firstIndex(where: { $0 == "\r" || $0 == "\n" }) {
+                let line = String(ctx.buffer[..<idx]).trimmingCharacters(in: .whitespacesAndNewlines)
+                ctx.buffer.removeSubrange(...idx)
                 if !line.isEmpty {
                     ctx.proxy?.progressUpdate(line)
                 }

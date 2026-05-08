@@ -49,11 +49,6 @@ struct ContentView: View {
                 HStack {
                     Text(String(format: "%.2f%%", viewModel.ddService.progress * 100))
                         .font(.system(.body, design: .monospaced))
-                    if !viewModel.ddService.timeRemaining.isEmpty {
-                        Text("ETA: \(viewModel.ddService.timeRemaining)")
-                            .font(.system(.body, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                    }
                     Spacer()
                     if !viewModel.ddService.speed.isEmpty {
                         Text(viewModel.ddService.speed)
@@ -70,7 +65,6 @@ struct ContentView: View {
                         )
                         Text("\(transferred) / \(total)")
                             .font(.system(.body, design: .monospaced))
-                            .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -95,6 +89,14 @@ struct ContentView: View {
                     }
                     .tint(.red)
                 } else {
+                    if viewModel.ddService.needsFullDiskAccess {
+                        Button("Grant Full Disk Access...") {
+                            viewModel.ddService.openFullDiskAccessSettings()
+                        }
+                        .tint(.orange)
+                        .buttonStyle(.borderedProminent)
+                    }
+
                     Button("Refresh Disks") {
                         Task { await viewModel.refreshDisks() }
                     }
