@@ -55,14 +55,8 @@ struct ContentView: View {
                             .font(.system(.body, design: .monospaced))
                     }
                     if viewModel.ddService.bytesTransferred > 0 {
-                        let transferred = ByteCountFormatter.string(
-                            fromByteCount: Int64(viewModel.ddService.bytesTransferred),
-                            countStyle: .file
-                        )
-                        let total = ByteCountFormatter.string(
-                            fromByteCount: Int64(viewModel.ddService.totalSize),
-                            countStyle: .file
-                        )
+                        let transferred = formatGB(viewModel.ddService.bytesTransferred)
+                        let total = formatGB(viewModel.ddService.totalSize)
                         Text("\(transferred) / \(total)")
                             .font(.system(.body, design: .monospaced))
                     }
@@ -184,6 +178,13 @@ struct ContentView: View {
                 .frame(minWidth: 250)
             }
         }
+    }
+
+    // MARK: - Formatting
+
+    private func formatGB(_ bytes: UInt64) -> String {
+        let gb = Double(bytes) / 1_000_000_000
+        return String(format: "%.2f GB", gb)
     }
 
     // MARK: - Confirmation Message
