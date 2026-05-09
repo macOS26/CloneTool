@@ -144,7 +144,7 @@ final class DDService {
             #!/bin/bash
             set -o pipefail
             diskutil unmountDisk \(source.devicePath) > /dev/null 2>&1
-            dd if=\(source.rawDevicePath) of='\(destinationPath)' bs=16m status=progress
+            dd if=\(source.rawDevicePath) of='\(destinationPath)' bs=16m conv=sparse status=progress
             """
         }
         await runOperation(totalSize: source.sizeBytes, script: script)
