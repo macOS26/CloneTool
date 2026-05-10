@@ -277,13 +277,16 @@ final class DDService {
             echo "Could not determine disk size; skipping expand."
         else
             TOTAL_SECTORS=$((TOTAL_BYTES / 512))
+            # Raw char device only supports sector-aligned reads — copy MBR to temp file first.
+            MBR_TMP=$(mktemp /tmp/clonetool-mbr.XXXXXX)
+            dd if=\(target.rawDevicePath) of="$MBR_TMP" bs=512 count=1 2>/dev/null
             BEST_OFFSET=0; BEST_START=0; BEST_TYPE=0; BEST_SLOT=-1
             for i in 0 1 2 3; do
                 OFF=$((446 + i * 16))
-                TYPE=$(dd if=\(target.rawDevicePath) bs=1 skip=$((OFF + 4)) count=1 2>/dev/null | od -An -tu1 | tr -d ' \\n')
+                TYPE=$(od -An -j$((OFF + 4)) -N1 -tu1 "$MBR_TMP" | tr -d ' \\n')
                 [ -z "$TYPE" ] && continue
                 [ "$TYPE" -eq 0 ] && continue
-                START=$(dd if=\(target.rawDevicePath) bs=1 skip=$((OFF + 8)) count=4 2>/dev/null | od -An -tu4 | tr -d ' \\n')
+                START=$(od -An -j$((OFF + 8)) -N4 -tu4 "$MBR_TMP" | tr -d ' \\n')
                 if [ "$START" -gt "$BEST_START" ]; then
                     BEST_START=$START; BEST_OFFSET=$OFF; BEST_TYPE=$TYPE; BEST_SLOT=$i
                 fi
@@ -299,12 +302,14 @@ final class DDService {
                     echo "Computed invalid partition size; skipping expand."
                 else
                     echo "Growing partition slot $BEST_SLOT: start=$BEST_START sectors, new size=$NEW_SIZE sectors"
+                    # Patch new sector count into the in-memory MBR, then write the whole sector back.
                     B0=$((NEW_SIZE & 0xFF))
                     B1=$(((NEW_SIZE >> 8) & 0xFF))
                     B2=$(((NEW_SIZE >> 16) & 0xFF))
                     B3=$(((NEW_SIZE >> 24) & 0xFF))
                     printf "$(printf '\\\\x%02x\\\\x%02x\\\\x%02x\\\\x%02x' $B0 $B1 $B2 $B3)" \\
-                        | dd of=\(target.rawDevicePath) bs=1 seek=$((BEST_OFFSET + 12)) count=4 conv=notrunc 2>/dev/null
+                        | dd of="$MBR_TMP" bs=1 seek=$((BEST_OFFSET + 12)) count=4 conv=notrunc 2>/dev/null
+                    dd if="$MBR_TMP" of=\(target.rawDevicePath) bs=512 count=1 conv=notrunc 2>/dev/null
                     sync
 
                     diskutil mountDisk \(target.devicePath) > /dev/null 2>&1 || true
@@ -324,6 +329,7 @@ final class DDService {
                     fi
                 fi
             fi
+            rm -f "$MBR_TMP"
         fi
         # --- End expand ---
         """
