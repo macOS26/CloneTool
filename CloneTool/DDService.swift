@@ -154,25 +154,89 @@ final class DDService {
 
     // MARK: - Image to Disk
 
-    func imageToDisk(sourcePath: String, target: DiskInfo) async {
+    func imageToDisk(sourcePath: String, target: DiskInfo, expandRootfs: Bool) async {
         let decompress = sourcePath.hasSuffix(".gz")
-        let script: String
+        let ddLine: String
         if decompress {
-            script = """
-            #!/bin/bash
-            set -o pipefail
-            diskutil unmountDisk \(target.devicePath) > /dev/null 2>&1
-            '\(DDService.pigzPath)' -d -c '\(sourcePath)' | dd of=\(target.rawDevicePath) bs=16m status=progress
-            """
+            ddLine = "'\(DDService.pigzPath)' -d -c '\(sourcePath)' | dd of=\(target.rawDevicePath) bs=16m status=progress"
         } else {
-            script = """
-            #!/bin/bash
-            set -o pipefail
-            diskutil unmountDisk \(target.devicePath) > /dev/null 2>&1
-            dd if='\(sourcePath)' of=\(target.rawDevicePath) bs=16m status=progress
-            """
+            ddLine = "dd if='\(sourcePath)' of=\(target.rawDevicePath) bs=16m status=progress"
         }
+        let expandSection = expandRootfs ? expandRootfsScript(target: target) : ""
+        let script = """
+        #!/bin/bash
+        set -o pipefail
+        diskutil unmountDisk \(target.devicePath) > /dev/null 2>&1
+        \(ddLine)
+        DD_STATUS=$?
+        if [ $DD_STATUS -ne 0 ]; then exit $DD_STATUS; fi
+        \(expandSection)
+        """
         await runOperation(totalSize: target.sizeBytes, script: script)
+    }
+
+    private func expandRootfsScript(target: DiskInfo) -> String {
+        return """
+
+        # --- Expand last MBR partition to fill disk + resize2fs ---
+        echo "Expanding rootfs to fill disk..."
+        diskutil unmountDisk force \(target.devicePath) > /dev/null 2>&1 || true
+
+        TOTAL_BYTES=$(diskutil info -plist \(target.devicePath) | plutil -extract Size raw - 2>/dev/null || echo 0)
+        if [ "$TOTAL_BYTES" -eq 0 ]; then
+            echo "Could not determine disk size; skipping expand."
+        else
+            TOTAL_SECTORS=$((TOTAL_BYTES / 512))
+            BEST_OFFSET=0; BEST_START=0; BEST_TYPE=0; BEST_SLOT=-1
+            for i in 0 1 2 3; do
+                OFF=$((446 + i * 16))
+                TYPE=$(dd if=\(target.rawDevicePath) bs=1 skip=$((OFF + 4)) count=1 2>/dev/null | od -An -tu1 | tr -d ' \\n')
+                [ -z "$TYPE" ] && continue
+                [ "$TYPE" -eq 0 ] && continue
+                START=$(dd if=\(target.rawDevicePath) bs=1 skip=$((OFF + 8)) count=4 2>/dev/null | od -An -tu4 | tr -d ' \\n')
+                if [ "$START" -gt "$BEST_START" ]; then
+                    BEST_START=$START; BEST_OFFSET=$OFF; BEST_TYPE=$TYPE; BEST_SLOT=$i
+                fi
+            done
+
+            if [ "$BEST_SLOT" -lt 0 ]; then
+                echo "No MBR partition found; skipping expand."
+            elif [ "$BEST_TYPE" != "131" ]; then
+                echo "Last partition is not Linux ext4 (MBR type=$BEST_TYPE); skipping expand."
+            else
+                NEW_SIZE=$((TOTAL_SECTORS - BEST_START))
+                if [ "$NEW_SIZE" -le 0 ]; then
+                    echo "Computed invalid partition size; skipping expand."
+                else
+                    echo "Growing partition slot $BEST_SLOT: start=$BEST_START sectors, new size=$NEW_SIZE sectors"
+                    B0=$((NEW_SIZE & 0xFF))
+                    B1=$(((NEW_SIZE >> 8) & 0xFF))
+                    B2=$(((NEW_SIZE >> 16) & 0xFF))
+                    B3=$(((NEW_SIZE >> 24) & 0xFF))
+                    printf "$(printf '\\\\x%02x\\\\x%02x\\\\x%02x\\\\x%02x' $B0 $B1 $B2 $B3)" \\
+                        | dd of=\(target.rawDevicePath) bs=1 seek=$((BEST_OFFSET + 12)) count=4 conv=notrunc 2>/dev/null
+                    sync
+
+                    diskutil mountDisk \(target.devicePath) > /dev/null 2>&1 || true
+                    PART_NUM=$((BEST_SLOT + 1))
+                    ROOTFS=\(target.rawDevicePath)s${PART_NUM}
+                    BLOCKDEV=\(target.devicePath)s${PART_NUM}
+                    diskutil unmount "$BLOCKDEV" > /dev/null 2>&1 || true
+
+                    echo "Running e2fsck on $ROOTFS..."
+                    '\(DDService.e2fsckPath)' -fy "$ROOTFS" || echo "e2fsck reported issues (continuing)"
+
+                    echo "Running resize2fs on $ROOTFS..."
+                    if '\(DDService.resize2fsPath)' "$ROOTFS"; then
+                        echo "Filesystem resized to fill disk."
+                    else
+                        echo "resize2fs failed; partition table was grown but filesystem was not. Linux will resize on first boot if the image supports it."
+                    fi
+                fi
+            fi
+        fi
+        # --- End expand ---
+        """
     }
 
     // MARK: - Disk to Disk

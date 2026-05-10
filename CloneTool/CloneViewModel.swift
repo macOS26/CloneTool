@@ -12,6 +12,7 @@ final class CloneViewModel {
     var imageVersion: String = ""
     var state: OperationState = .idle
     var showConfirmation = false
+    var expandRootfs: Bool = true
 
     let ddService = DDService()
 
@@ -103,7 +104,7 @@ final class CloneViewModel {
 
         case .imageToDisk:
             guard let target = targetDisk else { return }
-            await ddService.imageToDisk(sourcePath: imagePath, target: target)
+            await ddService.imageToDisk(sourcePath: imagePath, target: target, expandRootfs: expandRootfs)
 
         case .diskToDisk:
             guard let source = sourceDisk, let target = targetDisk else { return }

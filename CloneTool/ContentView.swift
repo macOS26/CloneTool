@@ -75,6 +75,13 @@ struct ContentView: View {
                     }
                 }
 
+                if viewModel.schema == .imageToDisk {
+                    Toggle("Expand rootfs", isOn: $viewModel.expandRootfs)
+                        .toggleStyle(.checkbox)
+                        .help("After writing, grow the last MBR partition to fill the disk and run resize2fs (Linux ext4 images).")
+                        .disabled(viewModel.state == .running)
+                }
+
                 Spacer()
 
                 if viewModel.state == .running {
