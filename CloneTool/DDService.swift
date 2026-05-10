@@ -45,6 +45,8 @@ final class DDService {
 
     nonisolated static let helperID = "com.clonetool.helper"
     nonisolated static let pigzPath = Bundle.main.path(forAuxiliaryExecutable: "pigz") ?? "pigz"
+    nonisolated static let resize2fsPath = Bundle.main.path(forAuxiliaryExecutable: "resize2fs") ?? "resize2fs"
+    nonisolated static let e2fsckPath = Bundle.main.path(forAuxiliaryExecutable: "e2fsck") ?? "e2fsck"
     nonisolated let instanceID = UUID().uuidString
 
     nonisolated init() {

@@ -20,7 +20,9 @@
 		BB00000000000000000012 /* com.clonetool.helper.plist in Copy Daemon Plist */ = {isa = PBXBuildFile; fileRef = AA00000000000000000044 /* com.clonetool.helper.plist */; };
 		BB00000000000000000013 /* CloneToolHelper in Copy Helper */ = {isa = PBXBuildFile; fileRef = BB00000000000000000003 /* CloneToolHelper */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		EAF3666D2F610EE0004B7E38 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = EAF3666C2F610EE0004B7E38 /* AppIcon.icon */; };
-		CC00000000000000000001 /* pigz in Copy Pigz */ = {isa = PBXBuildFile; fileRef = CC00000000000000000002 /* pigz */; };
+		CC00000000000000000001 /* pigz in Copy Pigz */ = {isa = PBXBuildFile; fileRef = CC00000000000000000002 /* pigz */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		CC00000000000000000010 /* resize2fs in Copy Pigz */ = {isa = PBXBuildFile; fileRef = CC00000000000000000011 /* resize2fs */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		CC00000000000000000020 /* e2fsck in Copy Pigz */ = {isa = PBXBuildFile; fileRef = CC00000000000000000021 /* e2fsck */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -63,6 +65,8 @@
 			dstSubfolderSpec = 6;
 			files = (
 				CC00000000000000000001 /* pigz in Copy Pigz */,
+				CC00000000000000000010 /* resize2fs in Copy Pigz */,
+				CC00000000000000000020 /* e2fsck in Copy Pigz */,
 			);
 			name = "Copy Pigz";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -86,6 +90,8 @@
 		BB00000000000000000003 /* CloneToolHelper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = CloneToolHelper; sourceTree = BUILT_PRODUCTS_DIR; };
 		EAF3666C2F610EE0004B7E38 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		CC00000000000000000002 /* pigz */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = pigz; sourceTree = "<group>"; };
+		CC00000000000000000011 /* resize2fs */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = resize2fs; sourceTree = "<group>"; };
+		CC00000000000000000021 /* e2fsck */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = e2fsck; sourceTree = "<group>"; };
 		CC00000000000000000003 /* Binaries */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Binaries; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -165,6 +171,8 @@
 			isa = PBXGroup;
 			children = (
 				CC00000000000000000002 /* pigz */,
+				CC00000000000000000011 /* resize2fs */,
+				CC00000000000000000021 /* e2fsck */,
 			);
 			path = Binaries;
 			sourceTree = "<group>";
