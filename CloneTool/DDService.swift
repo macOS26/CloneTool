@@ -132,9 +132,32 @@ final class DDService {
 
     // MARK: - Disk to Image
 
-    func diskToImage(source: DiskInfo, destinationPath: String, compress: Bool) async {
+    func diskToImage(source: DiskInfo, destinationPath: String, compress: Bool, shrinkFilesystem: Bool) async {
         let script: String
-        if compress {
+        if shrinkFilesystem {
+            let tempPath = destinationPath + ".tmp.img"
+            let shrinkSection = shrinkRootfsScript(imageFile: tempPath)
+            let finalize: String
+            if compress {
+                finalize = """
+                echo "Compressing image..."
+                '\(DDService.pigzPath)' -c '\(tempPath)' > '\(destinationPath)'
+                rm -f '\(tempPath)'
+                """
+            } else {
+                finalize = "mv -f '\(tempPath)' '\(destinationPath)'"
+            }
+            script = """
+            #!/bin/bash
+            set -o pipefail
+            diskutil unmountDisk \(source.devicePath) > /dev/null 2>&1
+            dd if=\(source.rawDevicePath) of='\(tempPath)' bs=16m conv=sparse status=progress
+            DD_STATUS=$?
+            if [ $DD_STATUS -ne 0 ]; then rm -f '\(tempPath)'; exit $DD_STATUS; fi
+            \(shrinkSection)
+            \(finalize)
+            """
+        } else if compress {
             script = """
             #!/bin/bash
             set -o pipefail
@@ -150,6 +173,73 @@ final class DDService {
             """
         }
         await runOperation(totalSize: source.sizeBytes, script: script)
+    }
+
+    private func shrinkRootfsScript(imageFile: String) -> String {
+        return """
+
+        # --- Shrink last MBR ext4 partition to minimum, patch MBR, truncate ---
+        echo "Analyzing partition table..."
+        BEST_OFFSET=0; BEST_START=0; BEST_TYPE=0; BEST_SLOT=-1
+        for i in 0 1 2 3; do
+            OFF=$((446 + i * 16))
+            TYPE=$(dd if='\(imageFile)' bs=1 skip=$((OFF + 4)) count=1 2>/dev/null | od -An -tu1 | tr -d ' \\n')
+            [ -z "$TYPE" ] && continue
+            [ "$TYPE" -eq 0 ] && continue
+            START=$(dd if='\(imageFile)' bs=1 skip=$((OFF + 8)) count=4 2>/dev/null | od -An -tu4 | tr -d ' \\n')
+            if [ "$START" -gt "$BEST_START" ]; then
+                BEST_START=$START; BEST_OFFSET=$OFF; BEST_TYPE=$TYPE; BEST_SLOT=$i
+            fi
+        done
+
+        if [ "$BEST_SLOT" -lt 0 ]; then
+            echo "No partitions in MBR; skipping shrink."
+        elif [ "$BEST_TYPE" != "131" ]; then
+            echo "Last partition not Linux ext4 (MBR type=$BEST_TYPE); skipping shrink."
+        else
+            echo "Attaching image as virtual disk..."
+            ATTACH_OUT=$(hdiutil attach -nomount -readwrite -imagekey diskimage-class=CRawDiskImage '\(imageFile)' 2>&1)
+            echo "$ATTACH_OUT"
+            DEV_DISK=$(echo "$ATTACH_OUT" | awk 'NR==1 {print $1}')
+            if [ -z "$DEV_DISK" ]; then
+                echo "Failed to attach image; skipping shrink."
+            else
+                PART_NUM=$((BEST_SLOT + 1))
+                ROOTFS_DEV="${DEV_DISK}s${PART_NUM}"
+
+                echo "Running e2fsck on $ROOTFS_DEV..."
+                '\(DDService.e2fsckPath)' -fy "$ROOTFS_DEV" || true
+
+                echo "Shrinking filesystem to minimum..."
+                RESIZE_OUT=$('\(DDService.resize2fsPath)' -M "$ROOTFS_DEV" 2>&1)
+                echo "$RESIZE_OUT"
+
+                hdiutil detach "$DEV_DISK" > /dev/null 2>&1 || true
+
+                NEW_BLOCKS=$(echo "$RESIZE_OUT" | grep -oE 'is now [0-9]+' | tail -1 | awk '{print $3}')
+                BLOCK_KB=$(echo "$RESIZE_OUT" | grep -oE '\\([0-9]+k\\)' | tail -1 | tr -dc '0-9')
+
+                if [ -z "$NEW_BLOCKS" ] || [ -z "$BLOCK_KB" ]; then
+                    echo "Could not parse resize2fs output; leaving image as-is."
+                else
+                    NEW_SECTORS=$((NEW_BLOCKS * BLOCK_KB * 2))
+                    echo "New rootfs size: $NEW_SECTORS sectors ($NEW_BLOCKS ${BLOCK_KB}k blocks)"
+
+                    B0=$((NEW_SECTORS & 0xFF))
+                    B1=$(((NEW_SECTORS >> 8) & 0xFF))
+                    B2=$(((NEW_SECTORS >> 16) & 0xFF))
+                    B3=$(((NEW_SECTORS >> 24) & 0xFF))
+                    printf "$(printf '\\\\x%02x\\\\x%02x\\\\x%02x\\\\x%02x' $B0 $B1 $B2 $B3)" \\
+                        | dd of='\(imageFile)' bs=1 seek=$((BEST_OFFSET + 12)) count=4 conv=notrunc 2>/dev/null
+
+                    NEW_FILE_BYTES=$(( (BEST_START + NEW_SECTORS) * 512 ))
+                    /usr/bin/truncate -s $NEW_FILE_BYTES '\(imageFile)'
+                    echo "Image truncated to $((NEW_FILE_BYTES / 1024 / 1024)) MB."
+                fi
+            fi
+        fi
+        # --- End shrink ---
+        """
     }
 
     // MARK: - Image to Disk

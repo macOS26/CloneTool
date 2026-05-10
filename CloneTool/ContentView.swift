@@ -80,6 +80,11 @@ struct ContentView: View {
                         .toggleStyle(.checkbox)
                         .help("After writing, grow the last MBR partition to fill the disk and run resize2fs (Linux ext4 images).")
                         .disabled(viewModel.state == .running)
+                } else if viewModel.schema == .diskToImage {
+                    Toggle("Shrink filesystem", isOn: $viewModel.shrinkFilesystem)
+                        .toggleStyle(.checkbox)
+                        .help("Shrink the last ext4 partition to minimum and truncate the image so it's no bigger than the data inside.")
+                        .disabled(viewModel.state == .running)
                 }
 
                 Spacer()

@@ -13,6 +13,7 @@ final class CloneViewModel {
     var state: OperationState = .idle
     var showConfirmation = false
     var expandRootfs: Bool = true
+    var shrinkFilesystem: Bool = true
 
     let ddService = DDService()
 
@@ -100,7 +101,7 @@ final class CloneViewModel {
             guard let source = sourceDisk else { return }
             let destPath = defaultImageDir.appendingPathComponent(generatedFileName).path
             imagePath = destPath
-            await ddService.diskToImage(source: source, destinationPath: destPath, compress: true)
+            await ddService.diskToImage(source: source, destinationPath: destPath, compress: true, shrinkFilesystem: shrinkFilesystem)
 
         case .imageToDisk:
             guard let target = targetDisk else { return }
