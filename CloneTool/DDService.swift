@@ -5,37 +5,16 @@ import ServiceManagement
 final class ProgressHandler: NSObject, HelperProgressProtocol, @unchecked Sendable {
     private let progressHandler: @Sendable (UInt64, String) -> Void
     private let logHandler: @Sendable (String) -> Void
-    private let totalSize: UInt64
 
     init(
-        totalSize: UInt64,
         progressHandler: @escaping @Sendable (UInt64, String) -> Void,
         logHandler: @escaping @Sendable (String) -> Void
     ) {
-        self.totalSize = totalSize
         self.progressHandler = progressHandler
         self.logHandler = logHandler
     }
 
-    private static let e2imageRegex = try! NSRegularExpression(
-        pattern: #"(\d+)\s*/\s*(\d+)\s+blocks\s*\((\d+)%\)"#
-    )
-
     func progressUpdate(_ line: String) {
-        // e2image -p emits "NNN / MMM blocks (PP%)" updates. Scale to the operation's total
-        // size so the progress bar moves smoothly during the e2image phase.
-        let nsLine = line as NSString
-        if let m = Self.e2imageRegex.firstMatch(in: line, range: NSRange(location: 0, length: nsLine.length)),
-           let copiedR = Range(m.range(at: 1), in: line),
-           let totalR = Range(m.range(at: 2), in: line),
-           let copied = Double(line[copiedR]),
-           let total = Double(line[totalR]),
-           total > 0 {
-            let synthetic = UInt64((copied / total) * Double(totalSize))
-            progressHandler(synthetic, "e2image \(Int(copied * 100 / total))%")
-            return
-        }
-
         let tokens = line.split(separator: " ")
         // dd's status=progress lines start with a byte count, e.g.
         //   "1024 bytes transferred in 0.001 secs (1024000 bytes/sec)"
@@ -228,7 +207,7 @@ final class DDService {
             ROOTFS_DEV=\(source.rawDevicePath)s${ROOTFS_PART_NUM}
             ROOTFS_TMP="\(imageFile).rootfs.tmp"
             echo "Capturing rootfs (used blocks only) via e2image..."
-            if ! '\(DDService.e2imagePath)' -ra -p "$ROOTFS_DEV" "$ROOTFS_TMP"; then
+            if ! '\(DDService.e2imagePath)' -r -a "$ROOTFS_DEV" "$ROOTFS_TMP"; then
                 echo "e2image failed; falling back to whole-disk dd."
                 rm -f "$ROOTFS_TMP" '\(imageFile)'
                 dd if=\(source.rawDevicePath) of='\(imageFile)' bs=16m conv=sparse status=progress
@@ -486,7 +465,6 @@ final class DDService {
         registerHelper()
 
         let handler = ProgressHandler(
-            totalSize: totalSize,
             progressHandler: { [weak self] bytes, speedStr in
                 Task { @MainActor [weak self] in
                     guard let self else { return }
