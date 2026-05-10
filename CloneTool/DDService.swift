@@ -47,6 +47,7 @@ final class DDService {
     nonisolated static let pigzPath = Bundle.main.path(forAuxiliaryExecutable: "pigz") ?? "pigz"
     nonisolated static let resize2fsPath = Bundle.main.path(forAuxiliaryExecutable: "resize2fs") ?? "resize2fs"
     nonisolated static let e2fsckPath = Bundle.main.path(forAuxiliaryExecutable: "e2fsck") ?? "e2fsck"
+    nonisolated static let e2imagePath = Bundle.main.path(forAuxiliaryExecutable: "e2image") ?? "e2image"
     nonisolated let instanceID = UUID().uuidString
 
     nonisolated init() {
@@ -136,6 +137,7 @@ final class DDService {
         let script: String
         if shrinkFilesystem {
             let tempPath = destinationPath + ".tmp.img"
+            let fastCapture = fastCaptureScript(source: source, imageFile: tempPath)
             let shrinkSection = shrinkRootfsScript(imageFile: tempPath)
             let finalize: String
             if compress {
@@ -151,9 +153,7 @@ final class DDService {
             #!/bin/bash
             set -o pipefail
             diskutil unmountDisk \(source.devicePath) > /dev/null 2>&1
-            dd if=\(source.rawDevicePath) of='\(tempPath)' bs=16m conv=sparse status=progress
-            DD_STATUS=$?
-            if [ $DD_STATUS -ne 0 ]; then rm -f '\(tempPath)'; exit $DD_STATUS; fi
+            \(fastCapture)
             \(shrinkSection)
             \(finalize)
             """
@@ -173,6 +173,60 @@ final class DDService {
             """
         }
         await runOperation(totalSize: source.sizeBytes, script: script)
+    }
+
+    /// Fast disk-to-image capture: dd the boot region only, then e2image -r -a the rootfs partition.
+    /// Falls back to whole-disk dd if the source's last partition isn't ext4.
+    private func fastCaptureScript(source: DiskInfo, imageFile: String) -> String {
+        return """
+        echo "Probing source partition table..."
+        SRC_MBR=$(mktemp /tmp/clonetool-srcmbr.XXXXXX)
+        dd if=\(source.rawDevicePath) of="$SRC_MBR" bs=512 count=1 2>/dev/null
+        BEST_OFFSET=0; BEST_START=0; BEST_TYPE=0; BEST_SLOT=-1
+        for i in 0 1 2 3; do
+            OFF=$((446 + i * 16))
+            TYPE=$(od -An -j$((OFF + 4)) -N1 -tu1 "$SRC_MBR" | tr -d ' \\n')
+            [ -z "$TYPE" ] && continue
+            [ "$TYPE" -eq 0 ] && continue
+            START=$(od -An -j$((OFF + 8)) -N4 -tu4 "$SRC_MBR" | tr -d ' \\n')
+            if [ "$START" -gt "$BEST_START" ]; then
+                BEST_START=$START; BEST_OFFSET=$OFF; BEST_TYPE=$TYPE; BEST_SLOT=$i
+            fi
+        done
+        rm -f "$SRC_MBR"
+
+        if [ "$BEST_TYPE" = "131" ] && [ "$BEST_START" -gt 0 ]; then
+            echo "Source rootfs is ext4 (slot $BEST_SLOT, start=$BEST_START sectors). Using fast capture."
+            BOOT_BYTES=$((BEST_START * 512))
+            echo "Copying boot region ($((BOOT_BYTES / 1024 / 1024)) MB)..."
+            dd if=\(source.rawDevicePath) of='\(imageFile)' bs=1m count=$((BOOT_BYTES / 1024 / 1024)) conv=sparse status=progress
+            DD_STATUS=$?
+            if [ $DD_STATUS -ne 0 ]; then rm -f '\(imageFile)'; exit $DD_STATUS; fi
+
+            ROOTFS_PART_NUM=$((BEST_SLOT + 1))
+            ROOTFS_DEV=\(source.rawDevicePath)s${ROOTFS_PART_NUM}
+            ROOTFS_TMP="\(imageFile).rootfs.tmp"
+            echo "Capturing rootfs (used blocks only) via e2image..."
+            if ! '\(DDService.e2imagePath)' -r -a "$ROOTFS_DEV" "$ROOTFS_TMP"; then
+                echo "e2image failed; falling back to whole-disk dd."
+                rm -f "$ROOTFS_TMP" '\(imageFile)'
+                dd if=\(source.rawDevicePath) of='\(imageFile)' bs=16m conv=sparse status=progress
+                DD_STATUS=$?
+                if [ $DD_STATUS -ne 0 ]; then rm -f '\(imageFile)'; exit $DD_STATUS; fi
+            else
+                echo "Splicing rootfs into image at sector $BEST_START..."
+                dd if="$ROOTFS_TMP" of='\(imageFile)' bs=1m seek=$((BOOT_BYTES / 1024 / 1024)) conv=sparse,notrunc status=progress
+                SPLICE_STATUS=$?
+                rm -f "$ROOTFS_TMP"
+                if [ $SPLICE_STATUS -ne 0 ]; then rm -f '\(imageFile)'; exit $SPLICE_STATUS; fi
+            fi
+        else
+            echo "Source last partition is not Linux ext4 — using whole-disk dd."
+            dd if=\(source.rawDevicePath) of='\(imageFile)' bs=16m conv=sparse status=progress
+            DD_STATUS=$?
+            if [ $DD_STATUS -ne 0 ]; then rm -f '\(imageFile)'; exit $DD_STATUS; fi
+        fi
+        """
     }
 
     private func shrinkRootfsScript(imageFile: String) -> String {
