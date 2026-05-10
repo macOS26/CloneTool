@@ -72,6 +72,5 @@ lipo_tool() {
 
 lipo_tool resize2fs resize
 lipo_tool e2fsck e2fsck
-lipo_tool e2image misc
 
 echo "==> Done. Binaries in ${OUT}"

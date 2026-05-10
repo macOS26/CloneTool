@@ -23,7 +23,6 @@
 		CC00000000000000000001 /* pigz in Copy Pigz */ = {isa = PBXBuildFile; fileRef = CC00000000000000000002 /* pigz */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		CC00000000000000000010 /* resize2fs in Copy Pigz */ = {isa = PBXBuildFile; fileRef = CC00000000000000000011 /* resize2fs */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		CC00000000000000000020 /* e2fsck in Copy Pigz */ = {isa = PBXBuildFile; fileRef = CC00000000000000000021 /* e2fsck */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		CC00000000000000000030 /* e2image in Copy Pigz */ = {isa = PBXBuildFile; fileRef = CC00000000000000000031 /* e2image */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -68,7 +67,6 @@
 				CC00000000000000000001 /* pigz in Copy Pigz */,
 				CC00000000000000000010 /* resize2fs in Copy Pigz */,
 				CC00000000000000000020 /* e2fsck in Copy Pigz */,
-				CC00000000000000000030 /* e2image in Copy Pigz */,
 			);
 			name = "Copy Pigz";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -94,7 +92,6 @@
 		CC00000000000000000002 /* pigz */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = pigz; sourceTree = "<group>"; };
 		CC00000000000000000011 /* resize2fs */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = resize2fs; sourceTree = "<group>"; };
 		CC00000000000000000021 /* e2fsck */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = e2fsck; sourceTree = "<group>"; };
-		CC00000000000000000031 /* e2image */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = e2image; sourceTree = "<group>"; };
 		CC00000000000000000003 /* Binaries */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Binaries; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -176,7 +173,6 @@
 				CC00000000000000000002 /* pigz */,
 				CC00000000000000000011 /* resize2fs */,
 				CC00000000000000000021 /* e2fsck */,
-				CC00000000000000000031 /* e2image */,
 			);
 			path = Binaries;
 			sourceTree = "<group>";
