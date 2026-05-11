@@ -210,15 +210,39 @@ final class DDService {
             else
                 echo "Rootfs partition node: $ROOTFS_DEV"
 
+                # First fsck so resize2fs has a clean filesystem.
                 echo "Running e2fsck on $ROOTFS_DEV..."
                 if ! '\(DDService.e2fsckPath)' -fy "$ROOTFS_DEV"; then
-                    echo "WARN: e2fsck returned non-zero (filesystem may have been auto-corrected). Continuing."
+                    echo "WARN: e2fsck returned non-zero (auto-corrected). Continuing."
                 fi
 
-                echo "Shrinking filesystem to minimum..."
-                RESIZE_OUT=$('\(DDService.resize2fsPath)' -M "$ROOTFS_DEV" 2>&1)
-                RESIZE_STATUS=$?
-                echo "$RESIZE_OUT"
+                # Probe the minimum size resize2fs CAN achieve (counts only used blocks,
+                # accounts for relocation). This is the true "data size" target.
+                echo "Probing minimum filesystem size..."
+                PROBE_OUT=$('\(DDService.resize2fsPath)' -P "$ROOTFS_DEV" 2>&1)
+                echo "$PROBE_OUT"
+                MIN_BLOCKS=$(echo "$PROBE_OUT" | grep -oE 'minimum size of the filesystem: [0-9]+' | grep -oE '[0-9]+$' | tail -1)
+
+                RESIZE_OUT=""; RESIZE_STATUS=1
+                if [ -n "$MIN_BLOCKS" ] && [ "$MIN_BLOCKS" -gt 0 ]; then
+                    # Pad by 5% (min 4096 blocks ~= 16 MB at 4k) to avoid edge cases.
+                    PAD=$((MIN_BLOCKS / 20))
+                    [ $PAD -lt 4096 ] && PAD=4096
+                    TARGET_BLOCKS=$((MIN_BLOCKS + PAD))
+                    echo "Forcing shrink to $TARGET_BLOCKS blocks (probed min $MIN_BLOCKS + pad $PAD)."
+                    echo "resize2fs will RELOCATE blocks as needed to hit this target."
+                    RESIZE_OUT=$('\(DDService.resize2fsPath)' -f "$ROOTFS_DEV" "$TARGET_BLOCKS" 2>&1)
+                    RESIZE_STATUS=$?
+                    echo "$RESIZE_OUT"
+                fi
+
+                if [ "$RESIZE_STATUS" -ne 0 ]; then
+                    echo "Forced shrink failed or unavailable. Falling back to resize2fs -M..."
+                    '\(DDService.e2fsckPath)' -fy "$ROOTFS_DEV" || true
+                    RESIZE_OUT=$('\(DDService.resize2fsPath)' -M "$ROOTFS_DEV" 2>&1)
+                    RESIZE_STATUS=$?
+                    echo "$RESIZE_OUT"
+                fi
 
                 hdiutil detach "$DEV_DISK" > /dev/null 2>&1 || true
 
