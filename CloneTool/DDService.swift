@@ -312,21 +312,13 @@ final class DDService {
                     dd if="$MBR_TMP" of=\(target.rawDevicePath) bs=512 count=1 conv=notrunc 2>/dev/null
                     sync
 
-                    diskutil mountDisk \(target.devicePath) > /dev/null 2>&1 || true
                     PART_NUM=$((BEST_SLOT + 1))
-                    ROOTFS=\(target.rawDevicePath)s${PART_NUM}
-                    BLOCKDEV=\(target.devicePath)s${PART_NUM}
-                    diskutil unmount "$BLOCKDEV" > /dev/null 2>&1 || true
-
-                    echo "Running e2fsck on $ROOTFS..."
-                    '\(DDService.e2fsckPath)' -fy "$ROOTFS" || echo "e2fsck reported issues (continuing)"
-
-                    echo "Running resize2fs on $ROOTFS..."
-                    if '\(DDService.resize2fsPath)' "$ROOTFS"; then
-                        echo "Filesystem resized to fill disk."
-                    else
-                        echo "resize2fs failed; partition table was grown but filesystem was not. Linux will resize on first boot if the image supports it."
-                    fi
+                    echo "Partition table grown to fill disk."
+                    echo "Filesystem will be resized on first Linux boot (Pi OS / cloud-init do this automatically)."
+                    echo "If your image doesn't auto-resize, run on the target: sudo resize2fs /dev/mmcblk0p${PART_NUM}"
+                    # macOS can't re-read the partition table after writing it, so the kernel
+                    # still reports the old size for the partition node — running e2fsck or
+                    # resize2fs here would corrupt the filesystem. Linux will handle it on boot.
                 fi
             fi
             rm -f "$MBR_TMP"
