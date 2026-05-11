@@ -198,43 +198,54 @@ final class DDService {
             echo "Last partition not Linux ext4 (MBR type=$BEST_TYPE); skipping shrink."
         else
             echo "Attaching image as virtual disk..."
-            ATTACH_OUT=$(hdiutil attach -nomount -readwrite -imagekey diskimage-class=CRawDiskImage '\(imageFile)' 2>&1)
+            ATTACH_OUT=$(hdiutil attach -nomount '\(imageFile)' 2>&1)
             echo "$ATTACH_OUT"
+            # Find the ext4 partition node by matching the "Linux" type label in hdiutil output.
+            ROOTFS_DEV=$(echo "$ATTACH_OUT" | awk '/Linux/ {print $1; exit}')
             DEV_DISK=$(echo "$ATTACH_OUT" | awk 'NR==1 {print $1}')
-            if [ -z "$DEV_DISK" ]; then
-                echo "Failed to attach image; skipping shrink."
+            if [ -z "$ROOTFS_DEV" ]; then
+                echo "ERROR: hdiutil did not expose a Linux partition node. Aborting shrink."
+                echo "Full hdiutil output above. Image left at full size."
+                [ -n "$DEV_DISK" ] && hdiutil detach "$DEV_DISK" > /dev/null 2>&1 || true
             else
-                PART_NUM=$((BEST_SLOT + 1))
-                ROOTFS_DEV="${DEV_DISK}s${PART_NUM}"
+                echo "Rootfs partition node: $ROOTFS_DEV"
 
                 echo "Running e2fsck on $ROOTFS_DEV..."
-                '\(DDService.e2fsckPath)' -fy "$ROOTFS_DEV" || true
+                if ! '\(DDService.e2fsckPath)' -fy "$ROOTFS_DEV"; then
+                    echo "WARN: e2fsck returned non-zero (filesystem may have been auto-corrected). Continuing."
+                fi
 
                 echo "Shrinking filesystem to minimum..."
                 RESIZE_OUT=$('\(DDService.resize2fsPath)' -M "$ROOTFS_DEV" 2>&1)
+                RESIZE_STATUS=$?
                 echo "$RESIZE_OUT"
 
                 hdiutil detach "$DEV_DISK" > /dev/null 2>&1 || true
 
-                NEW_BLOCKS=$(echo "$RESIZE_OUT" | grep -oE 'is now [0-9]+' | tail -1 | awk '{print $3}')
-                BLOCK_KB=$(echo "$RESIZE_OUT" | grep -oE '\\([0-9]+k\\)' | tail -1 | tr -dc '0-9')
-
-                if [ -z "$NEW_BLOCKS" ] || [ -z "$BLOCK_KB" ]; then
-                    echo "Could not parse resize2fs output; leaving image as-is."
+                if [ "$RESIZE_STATUS" -ne 0 ]; then
+                    echo "ERROR: resize2fs failed (exit $RESIZE_STATUS). Image left at full size."
                 else
-                    NEW_SECTORS=$((NEW_BLOCKS * BLOCK_KB * 2))
-                    echo "New rootfs size: $NEW_SECTORS sectors ($NEW_BLOCKS ${BLOCK_KB}k blocks)"
+                    NEW_BLOCKS=$(echo "$RESIZE_OUT" | grep -oE 'is now [0-9]+' | tail -1 | awk '{print $3}')
+                    BLOCK_KB=$(echo "$RESIZE_OUT" | grep -oE '\\([0-9]+k\\)' | tail -1 | tr -dc '0-9')
 
-                    B0=$((NEW_SECTORS & 0xFF))
-                    B1=$(((NEW_SECTORS >> 8) & 0xFF))
-                    B2=$(((NEW_SECTORS >> 16) & 0xFF))
-                    B3=$(((NEW_SECTORS >> 24) & 0xFF))
-                    printf "$(printf '\\\\x%02x\\\\x%02x\\\\x%02x\\\\x%02x' $B0 $B1 $B2 $B3)" \\
-                        | dd of='\(imageFile)' bs=1 seek=$((BEST_OFFSET + 12)) count=4 conv=notrunc 2>/dev/null
+                    if [ -z "$NEW_BLOCKS" ] || [ -z "$BLOCK_KB" ]; then
+                        echo "ERROR: Could not parse resize2fs output. Image left at full size."
+                    else
+                        NEW_SECTORS=$((NEW_BLOCKS * BLOCK_KB * 2))
+                        echo "Shrunk to $NEW_SECTORS sectors ($NEW_BLOCKS ${BLOCK_KB}k blocks)."
 
-                    NEW_FILE_BYTES=$(( (BEST_START + NEW_SECTORS) * 512 ))
-                    /usr/bin/truncate -s $NEW_FILE_BYTES '\(imageFile)'
-                    echo "Image truncated to $((NEW_FILE_BYTES / 1024 / 1024)) MB."
+                        B0=$((NEW_SECTORS & 0xFF))
+                        B1=$(((NEW_SECTORS >> 8) & 0xFF))
+                        B2=$(((NEW_SECTORS >> 16) & 0xFF))
+                        B3=$(((NEW_SECTORS >> 24) & 0xFF))
+                        printf "$(printf '\\\\x%02x\\\\x%02x\\\\x%02x\\\\x%02x' $B0 $B1 $B2 $B3)" \\
+                            | dd of='\(imageFile)' bs=1 seek=$((BEST_OFFSET + 12)) count=4 conv=notrunc 2>/dev/null
+
+                        OLD_FILE_BYTES=$(stat -f "%z" '\(imageFile)')
+                        NEW_FILE_BYTES=$(( (BEST_START + NEW_SECTORS) * 512 ))
+                        /usr/bin/truncate -s $NEW_FILE_BYTES '\(imageFile)'
+                        echo "Image truncated: $((OLD_FILE_BYTES / 1024 / 1024)) MB -> $((NEW_FILE_BYTES / 1024 / 1024)) MB."
+                    fi
                 fi
             fi
         fi
