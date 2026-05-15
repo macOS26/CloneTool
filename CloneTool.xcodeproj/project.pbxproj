@@ -19,10 +19,10 @@
 		BB00000000000000000011 /* HelperProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00000000000000000002 /* HelperProtocol.swift */; };
 		BB00000000000000000012 /* com.clonetool.helper.plist in Copy Daemon Plist */ = {isa = PBXBuildFile; fileRef = AA00000000000000000044 /* com.clonetool.helper.plist */; };
 		BB00000000000000000013 /* CloneToolHelper in Copy Helper */ = {isa = PBXBuildFile; fileRef = BB00000000000000000003 /* CloneToolHelper */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		EAF3666D2F610EE0004B7E38 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = EAF3666C2F610EE0004B7E38 /* AppIcon.icon */; };
 		CC00000000000000000001 /* pigz in Copy Pigz */ = {isa = PBXBuildFile; fileRef = CC00000000000000000002 /* pigz */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		CC00000000000000000010 /* resize2fs in Copy Pigz */ = {isa = PBXBuildFile; fileRef = CC00000000000000000011 /* resize2fs */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		CC00000000000000000020 /* e2fsck in Copy Pigz */ = {isa = PBXBuildFile; fileRef = CC00000000000000000021 /* e2fsck */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		EAF3666D2F610EE0004B7E38 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = EAF3666C2F610EE0004B7E38 /* AppIcon.icon */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -88,11 +88,10 @@
 		BB00000000000000000001 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		BB00000000000000000002 /* HelperProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperProtocol.swift; sourceTree = "<group>"; };
 		BB00000000000000000003 /* CloneToolHelper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = CloneToolHelper; sourceTree = BUILT_PRODUCTS_DIR; };
-		EAF3666C2F610EE0004B7E38 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		CC00000000000000000002 /* pigz */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = pigz; sourceTree = "<group>"; };
 		CC00000000000000000011 /* resize2fs */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = resize2fs; sourceTree = "<group>"; };
 		CC00000000000000000021 /* e2fsck */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = e2fsck; sourceTree = "<group>"; };
-		CC00000000000000000003 /* Binaries */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Binaries; sourceTree = "<group>"; };
+		EAF3666C2F610EE0004B7E38 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -428,6 +427,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 469UCUB275;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = CloneTool;
@@ -456,6 +456,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 469UCUB275;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = CloneTool;
@@ -484,6 +485,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.clonetool.helper;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
@@ -499,11 +501,12 @@
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.clonetool.helper;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
 		};
-/* End XCBuildConfiguration section */
+	/* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
 		AA00000000000000000090 /* Build configuration list for PBXProject "CloneTool" */ = {
